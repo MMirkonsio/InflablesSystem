@@ -15,7 +15,7 @@ interface LoginFormProps {
 
 const CREDENTIALS = {
   admin: { username: "admin", password: "123" },
-  employee: { username: "Usuario", password: "123" },
+  employee: { username: "usuario", password: "123" },
 }
 
 export default function LoginForm({ onLogin }: LoginFormProps) {
@@ -100,18 +100,6 @@ export default function LoginForm({ onLogin }: LoginFormProps) {
               {loading ? "Iniciando sesión..." : "Iniciar Sesión"}
             </Button>
           </form>
-
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <h4 className="font-semibold text-sm text-gray-700 mb-2">Credenciales de prueba:</h4>
-            <div className="text-xs text-gray-600 space-y-1">
-              <div>
-                <strong>Administrador:</strong> admin / 123
-              </div>
-              <div>
-                <strong>Empleado:</strong> Usuario / 123
-              </div>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>
