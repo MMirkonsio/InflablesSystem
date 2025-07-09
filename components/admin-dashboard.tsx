@@ -27,18 +27,21 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
   const [players, setPlayers] = useState<Player[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetch("https://inflables-backend.onrender.com/players")
-      .then((res) => res.json())
-      .then((data) => {
-        setPlayers(data)
-        setLoading(false)
-      })
-      .catch((err) => {
-        console.error("Error al obtener jugadores:", err)
-        setLoading(false)
-      })
-  }, [])
+useEffect(() => {
+  fetch("https://inflables-backend.onrender.com/players")
+    .then(res => res.json())
+    .then(data => {
+      if (Array.isArray(data)) {
+        setPlayers(data); // ← solo si es un array
+      } else {
+        console.error("Respuesta inesperada:", data);
+      }
+    })
+    .catch(err => {
+      console.error("Error al obtener jugadores:", err);
+    });
+}, []);
+
 
   const handleAddPlayer = () => {
     if (name.trim() && minutes) {
