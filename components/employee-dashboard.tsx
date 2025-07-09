@@ -24,28 +24,21 @@ export default function EmployeeDashboard({ onBack }: EmployeeDashboardProps) {
   const [loading, setLoading] = useState(true)
   const [currentTime, setCurrentTime] = useState(new Date())
 
-  // 🔗 Obtener jugadores desde tu backend en Render
-  useEffect(() => {
+useEffect(() => {
+  const fetchPlayers = () => {
     fetch("https://inflables-backend.onrender.com/players")
       .then((res) => res.json())
-      .then((data) => {
-        setPlayers(data)
-        setLoading(false)
-      })
-      .catch((err) => {
-        console.error("Error al cargar jugadores:", err)
-        setLoading(false)
-      })
-  }, [])
+      .then((data) => setPlayers(data))
+      .catch((err) => console.error("Error al cargar jugadores:", err))
+  }
 
-  // ⏱ Actualizar hora actual cada segundo
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date())
-    }, 1000)
+  fetchPlayers() // primera carga
+  const interval = setInterval(fetchPlayers, 5000) // cada 5 segundos
 
-    return () => clearInterval(timer)
-  }, [])
+  return () => clearInterval(interval)
+}, [])
+
+
 
   const activePlayers = players.filter((player) => player.status === "active")
   const expiredPlayers = players.filter((player) => player.status === "expired")

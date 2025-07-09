@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Users, Timer, UserCheck, LogOut } from "lucide-react"
@@ -16,14 +16,30 @@ export default function HomePage() {
   // Inicializar sincronización en tiempo real
   useRealtimeSync()
 
+
+  // ✅ Restaurar sesión si existe en localStorage
+  useEffect(() => {
+    const savedRole = localStorage.getItem("userRole") as "admin" | "employee" | null
+    const auth = localStorage.getItem("isAuthenticated") === "true"
+
+    if (auth && savedRole) {
+      setIsAuthenticated(true)
+      setUserRole(savedRole)
+    }
+  }, [])
+
   const handleLogin = (role: "admin" | "employee") => {
     setUserRole(role)
     setIsAuthenticated(true)
+    localStorage.setItem("userRole", role)
+    localStorage.setItem("isAuthenticated", "true")
   }
 
   const handleLogout = () => {
     setUserRole(null)
     setIsAuthenticated(false)
+    localStorage.removeItem("userRole")
+    localStorage.removeItem("isAuthenticated")
   }
 
   // Mostrar login si no está autenticado
