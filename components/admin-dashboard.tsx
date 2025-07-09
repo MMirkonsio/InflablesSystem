@@ -1,14 +1,21 @@
 "use client"
 
-import type React from "react"
-
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Plus, Users, Clock, Trash2, LogOut } from "lucide-react"
-import { useGameStore } from "@/lib/game-store"
+import TimerCard from "@/components/timer-card"
+
+interface Player {
+  id: string
+  name: string
+  startTime: number
+  duration: number
+  status: "active" | "expired"
+  createdAt: number
+}
 
 interface AdminDashboardProps {
   onBack: () => void
@@ -17,188 +24,108 @@ interface AdminDashboardProps {
 export default function AdminDashboard({ onBack }: AdminDashboardProps) {
   const [name, setName] = useState("")
   const [minutes, setMinutes] = useState("30")
-  const {
-    players,
-    loading,
-    error,
-    addPlayer,
-    deletePlayer,
-    fetchPlayers,
-    subscribeToPlayers,
-    getActivePlayersCount,
-    getTotalPlayersCount,
-  } = useGameStore()
+  const [players, setPlayers] = useState<Player[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Cargar datos iniciales
-    fetchPlayers()
-
-    // Suscribirse a cambios en tiempo real
-    const unsubscribe = subscribeToPlayers()
-
-    // Cleanup al desmontar
-    return unsubscribe
-  }, [fetchPlayers, subscribeToPlayers])
+    fetch("https://inflables-backend.onrender.com/players")
+      .then((res) => res.json())
+      .then((data) => {
+        setPlayers(data)
+        setLoading(false)
+      })
+      .catch((err) => {
+        console.error("Error al obtener jugadores:", err)
+        setLoading(false)
+      })
+  }, [])
 
   const handleAddPlayer = () => {
     if (name.trim() && minutes) {
-      addPlayer(name.trim(), Number.parseInt(minutes))
-      setName("")
-      setMinutes("30")
+      fetch("https://inflables-backend.onrender.com/players", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: name.trim(),
+          duration: parseInt(minutes),
+        }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          setPlayers((prev) => [data, ...prev]) // actualizar lista local
+          setName("")
+          setMinutes("30")
+        })
+        .catch((err) => console.error("Error al agregar jugador:", err))
     }
   }
 
-  const handleDeletePlayer = (id: string, playerName: string) => {
-    if (window.confirm(`¿Estás seguro de eliminar a ${playerName}?`)) {
-      deletePlayer(id)
-    }
+  const handleLogout = () => {
+    onBack()
   }
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleAddPlayer()
-    }
-  }
+  const activePlayers = players.filter((player) => player.status === "active")
+  const expiredPlayers = players.filter((player) => player.status === "expired")
+
+  if (loading) return <p className="text-center">Cargando jugadores...</p>
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-orange-100 p-4">
       <div className="max-w-6xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" onClick={onBack}>
-              <LogOut className="w-4 h-4 mr-2" />
-              Cerrar Sesión
-            </Button>
-            <h1 className="text-3xl font-bold text-gray-900">Panel de Administrador</h1>
+        <div className="flex justify-between items-center mb-6">
+          <Button variant="destructive" onClick={handleLogout}>
+            <LogOut className="mr-2 h-4 w-4" />
+            Cerrar sesión
+          </Button>
+          <div className="text-right">
+            <Users className="inline mr-1 text-gray-600" />
+            {players.length} jugadores
           </div>
-          <div className="text-sm text-gray-600 bg-white px-3 py-1 rounded-full">👤 admin</div>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Personas Activas</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{getActivePlayersCount()}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Registrados</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{getTotalPlayersCount()}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Tiempo Promedio</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-purple-600">
-                {players.length > 0 ? Math.round(players.reduce((acc, p) => acc + p.duration, 0) / players.length) : 30}{" "}
-                min
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid lg:grid-cols-2 gap-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Plus className="w-5 h-5" />
-                Registrar Nueva Persona
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="name">Nombre de la persona</Label>
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Ingresa el nombre..."
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="time">Tiempo en minutos</Label>
-                <Input
-                  id="time"
-                  type="number"
-                  value={minutes}
-                  onChange={(e) => setMinutes(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  min="1"
-                  max="120"
-                  className="mt-1"
-                />
-              </div>
-              <Button onClick={handleAddPlayer} className="w-full" size="lg" disabled={loading}>
-                <Plus className="w-4 h-4 mr-2" />
-                {loading ? "Registrando..." : "Registrar Persona"}
+        <div className="bg-white rounded-xl shadow-md p-6 mb-8">
+          <h2 className="text-xl font-semibold mb-4">Agregar Jugador</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="name">Nombre</Label>
+              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+            <div>
+              <Label htmlFor="minutes">Minutos</Label>
+              <Input id="minutes" type="number" value={minutes} onChange={(e) => setMinutes(e.target.value)} />
+            </div>
+            <div className="flex items-end">
+              <Button onClick={handleAddPlayer}>
+                <Plus className="mr-2 h-4 w-4" />
+                Agregar
               </Button>
-              {error && <div className="text-center text-red-600 text-sm">Error: {error}</div>}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Gestión de Personas</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {players
-                  .slice()
-                  .sort((a, b) => b.createdAt - a.createdAt)
-                  .map((player) => (
-                    <div
-                      key={player.id}
-                      className={`flex items-center justify-between p-3 rounded-lg border ${
-                        player.status === "active" ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"
-                      }`}
-                    >
-                      <div className="flex-1">
-                        <p className="font-medium">{player.name}</p>
-                        <p className="text-sm text-gray-600">
-                          {player.duration} min • {new Date(player.startTime).toLocaleTimeString()}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            player.status === "active" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {player.status === "active" ? "Activo" : "Terminado"}
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDeletePlayer(player.id, player.name)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          disabled={loading}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                {players.length === 0 && (
-                  <p className="text-center text-gray-500 py-8">No hay personas registradas aún</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
+
+        <h2 className="text-xl font-semibold mb-4">Jugadores Activos</h2>
+        {activePlayers.length === 0 ? (
+          <p className="text-gray-500">No hay jugadores activos.</p>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {activePlayers.map((player) => (
+              <TimerCard key={player.id} player={player} />
+            ))}
+          </div>
+        )}
+
+        <h2 className="text-xl font-semibold mt-10 mb-4">Jugadores Expirados</h2>
+        {expiredPlayers.length === 0 ? (
+          <p className="text-gray-500">No hay jugadores expirados.</p>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {expiredPlayers.map((player) => (
+              <TimerCard key={player.id} player={player} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
